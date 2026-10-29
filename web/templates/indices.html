@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+{% block titulo %}Índices y tiempos{% endblock %}
+{% block contenido %}
+{% set n_exp = lista|selectattr('del_experimento')|list|length %}
+<div class="cabecera">
+  <div class="chip-grande">{{ icono('indices') }}</div>
+  <div><h1>Índices y tiempos
+    {% if n_exp %}<span class="etq ok">{{ icono('ok') }} {{ n_exp }} índices del experimento activos</span>{% else %}<span class="etq err">{{ icono('error') }} sin índices del experimento</span>{% endif %}</h1>
+  <p class="sub">Cada medición es la mediana de 3 ejecuciones de las 5 consultas del experimento (tiempo dentro del servidor, tomado de EXPLAIN ANALYZE). Sigue los pasos en orden.</p></div>
+</div>
+
+<div class="pasos">
+  <div class="paso"><span class="num">1</span><b>Borrar índices</b><p>Quita los índices del experimento. Quedan solo los de las llaves (PK y UNIQUE).</p>
+    <form method="post"><input type="hidden" name="accion" value="borrar"><button{% if SOLO_LECTURA %} disabled title="Desactivado en modo solo lectura"{% endif %} class="sec">{{ icono('borrar') }} Borrar índices</button></form></div>
+  <div class="paso"><span class="num">2</span><b>Medir sin índices</b><p>Ejecuta las 5 consultas y guarda los tiempos como «sin índices».</p>
+    <form method="post"><input type="hidden" name="accion" value="medir"><button {% if n_exp %}class="sec"{% endif %}>{{ icono('medir') }} Medir las 5 consultas</button></form></div>
+  <div class="paso"><span class="num">3</span><b>Crear índices finales</b><p>Construye los 5 índices sobre el millón de genotipos y actualiza las estadísticas.</p>
+    <form method="post"><input type="hidden" name="accion" value="crear"><button{% if SOLO_LECTURA %} disabled title="Desactivado en modo solo lectura"{% endif %} class="sec">{{ icono('mas') }} Crear índices finales</button></form></div>
+  <div class="paso"><span class="num">4</span><b>Medir con índices</b><p>Vuelve a medir: los tiempos se guardan como «con índices» y se comparan abajo.</p>
+    <form method="post"><input type="hidden" name="accion" value="medir"><button {% if not n_exp %}class="sec"{% endif %}>{{ icono('medir') }} Medir las 5 consultas</button></form></div>
+</div>
+
+{% if error %}<div class="aviso error">{{ icono('error') }}<span>{{ error }}</span></div>{% endif %}
+{% if mediciones %}
+<h2>{{ icono('medir') }} Comparación
+  <form method="post" action="{{ url_for('limpiar_mediciones') }}" style="margin-left:auto"><button class="sec" style="padding:6px 12px;font-size:13px">{{ icono('limpiar') }} Limpiar mediciones</button></form></h2>
+{% set colores = {'sin índices': 'var(--serie1)', 'con índices': 'var(--serie2)'} %}
+{% set orden = ['sin índices', 'con índices']|select('in', mediciones)|list %}
+{% set ambas = orden|length == 2 %}
+{% set ns = namespace(mx=0.001) %}
+{% for k, t in mediciones.items() %}{% for q, v in t.items() %}{% if v > ns.mx %}{% set ns.mx = v %}{% endif %}{% endfor %}{% endfor %}
+<div class="panel">
+  <div class="leyenda">{% for k in orden %}<span><i style="background:{{ colores[k] }}"></i>{{ k }}</span>{% endfor %}</div>
+  <div class="barras">
+  {% for q in experimento %}
+    <div class="fila"><span class="nombre">{{ q }}<small>{{ CONSULTAS[q].titulo }}</small>
+      {% if ambas and mediciones['sin índices'][q] and mediciones['con índices'][q] %}{% set a = mediciones['sin índices'][q] / mediciones['con índices'][q] %}
+      <span class="acel {{ '' if a >= 1.3 else 'neutra' }}" style="margin-top:4px">{% if a >= 1.3 %}{{ icono('rayo') }}{% endif %}{{ '%.1f'|format(a) }}×</span>{% endif %}</span>
+      <div>
+      {% for k in orden %}{% set t = mediciones[k] %}{% if q in t %}
+        <div class="pista"><div class="b" style="width:{{ (t[q] / ns.mx * 82)|round(1) }}%;background:{{ colores[k] }}" title="{{ k }}: {{ '%.1f'|format(t[q]) }} ms"></div><span class="val">{{ '%.1f'|format(t[q]) }} ms</span></div>
+      {% endif %}{% endfor %}
+      </div></div>
+  {% endfor %}
+  </div>
+</div>
+<div class="tabla"><table><thead><tr><th>Consulta</th>{% for k in orden %}<th class="num">{{ k }} (ms)</th>{% endfor %}{% if ambas %}<th class="num">Aceleración</th>{% endif %}</tr></thead><tbody>
+{% for q in experimento %}<tr><td><b>{{ q }}</b> <span class="mute">{{ CONSULTAS[q].titulo }}</span></td>{% for k in orden %}{% set t = mediciones[k] %}<td class="num">{{ '%.1f'|format(t[q]) if q in t else '—' }}</td>{% endfor %}
+{% if ambas %}<td class="num">{% if mediciones['sin índices'][q] and mediciones['con índices'][q] %}{% set a = mediciones['sin índices'][q] / mediciones['con índices'][q] %}<span class="acel {{ '' if a >= 1.3 else 'neutra' }}">{{ '%.1f'|format(a) }}×</span>{% endif %}</td>{% endif %}</tr>{% endfor %}
+</tbody></table></div>
+{% else %}
+<div class="panel mute" style="display:flex;gap:10px;align-items:center;margin-top:18px">{{ icono('info') }} Todavía no hay mediciones. Empieza por el paso 1.</div>
+{% endif %}
+
+<h2>{{ icono('capas') }} Índices actuales</h2>
+<div class="tabla"><table><thead><tr><th>Índice</th><th>Tabla</th><th class="num">Tamaño</th><th>Definición</th></tr></thead><tbody>
+{% for i in lista %}<tr><td class="mono" style="font-size:12.5px;white-space:nowrap">{{ i.indice }}{% if i.del_experimento %} <span class="etq">experimento</span>{% endif %}</td><td>{{ i.tabla }}</td><td class="num" style="white-space:nowrap">{{ i.tamano }}</td><td><code>{{ i.definicion }}</code></td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

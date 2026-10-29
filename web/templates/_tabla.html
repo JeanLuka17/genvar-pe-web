@@ -1,0 +1,18 @@
+{% from "_iconos.html" import icono %}
+{% macro tabla(r, max_filas=200) %}
+<div class="metricas">
+  <span class="metrica">{{ icono('filas') }}{{ '{:,}'.format(r.total).replace(',', ' ') }} fila{{ '' if r.total == 1 else 's' }}</span>
+  <span class="metrica">{{ icono('reloj') }}{{ '%.1f'|format(r.ms) }} ms</span>
+  {% if r.total > r.filas|length %}<span class="mute">Se muestran las primeras {{ r.filas|length }}.</span>{% endif %}
+</div>
+{% if r.filas %}
+<div class="tabla"><table>
+  <thead><tr>{% for c in r.cols %}<th class="{{ 'num' if r.filas[0][loop.index0] is number }}">{{ c|replace('_', ' ') }}</th>{% endfor %}</tr></thead>
+  <tbody>
+  {% for f in r.filas %}<tr>
+    {% for v in f %}{% set col = r.cols[loop.index0] %}<td class="{{ 'num' if v is number }}">{% if v is none %}<span class="mute">—</span>{% elif col == 'id_donante' %}<a href="{{ url_for('donante', id_donante=v) }}">{{ v }}</a>{% elif col in ('significancia', 'significancia_nueva') %}<span class="etq {{ 'err' if 'PATOG' in v|string else ('ok' if 'BENIG' in v|string else '') }}">{{ v }}</span>{% else %}{{ v }}{% endif %}</td>{% endfor %}
+  </tr>{% endfor %}
+  </tbody>
+</table></div>
+{% else %}<div class="panel mute" style="display:flex;gap:10px;align-items:center">{{ icono('info') }} La consulta no devolvió filas.</div>{% endif %}
+{% endmacro %}

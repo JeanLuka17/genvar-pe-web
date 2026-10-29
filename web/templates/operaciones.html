@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+{% block titulo %}Registrar y actualizar{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <div class="chip-grande">{{ icono('editar') }}</div>
+  <div><h1>Registrar y actualizar</h1>
+  <p class="sub">Cada formulario llama a un procedimiento almacenado o hace un INSERT. Si se viola una regla del negocio, el mensaje que aparece arriba es el error que lanza PostgreSQL desde el trigger.</p></div>
+</div>
+<div class="grid2">
+<div class="panel op" id="donante">
+  <div class="titulo"><span class="icono">{{ icono('donante') }}</span><h2>Registrar donante</h2><span class="etq mono">INSERT</span></div>
+  <form class="params" method="post"><input type="hidden" name="op" value="donante">
+    <label>Código<input name="id_donante" placeholder="CGA-D900001" required maxlength="12"></label>
+    <label>Sexo<select name="sexo"><option>F</option><option>M</option><option>X</option></select></label>
+    <label>Año de nacimiento<input name="anio" type="number" value="1990"></label>
+    <label>Población<input name="poblacion" value="Quechua"></label>
+    <label>Consentimiento<select name="consentimiento"><option value="si">Firmado</option><option value="no">No firmado</option></select></label>
+    <button{% if SOLO_LECTURA %} disabled title="Desactivado en modo solo lectura"{% endif %}>{{ icono('mas') }} Registrar</button></form>
+</div>
+
+<div class="panel op verde" id="muestra">
+  <div class="titulo"><span class="icono">{{ icono('muestra') }}</span><h2>Registrar muestra</h2><span class="etq mono">sp_registrar_muestra</span></div>
+  <form class="params" method="post"><input type="hidden" name="op" value="muestra">
+    <label>Código<input name="id_muestra" placeholder="CGA-M9000001" required maxlength="14"></label>
+    <label>Donante<input name="id_donante" placeholder="CGA-D900001" required></label>
+    <label>Fecha de colecta<input name="fecha" type="date" value="2026-10-01" required></label>
+    <label>ADN (ng/µL)<input name="conc" type="number" step="0.01" value="25"></label>
+    <label>Tipo<select name="tipo"><option>GERMINAL</option><option>TUMORAL</option></select></label>
+    <label>Fuente (germinal)<select name="fuente"><option></option><option>SANGRE</option><option>SALIVA</option><option>HISOPADO_BUCAL</option></select></label>
+    <label>Tipo de tumor<input name="tipo_tumor"></label>
+    <label>Estadio<input name="estadio" maxlength="5"></label>
+    <label>Pureza (%)<input name="pureza" type="number" step="0.01"></label>
+    <button{% if SOLO_LECTURA %} disabled title="Desactivado en modo solo lectura"{% endif %}>{{ icono('mas') }} Registrar</button></form>
+  <p class="nota">{{ icono('info') }}<span>Prueba: registra una muestra para un donante sin consentimiento y el trigger T3 la rechaza.</span></p>
+</div>
+
+<div class="panel op ambar" id="reclasificar">
+  <div class="titulo"><span class="icono">{{ icono('anotacion') }}</span><h2>Reclasificar anotación</h2><span class="etq mono">sp_reclasificar_anotacion</span></div>
+  <form class="params" method="post"><input type="hidden" name="op" value="reclasificar">
+    <label>Anotación<input name="id_anotacion" placeholder="SCV000000002" required></label>
+    <label>Nueva significancia<select name="nueva">
+      <option>PATOGENICA</option><option>PROBABLEMENTE_PATOGENICA</option><option>VUS</option>
+      <option>PROBABLEMENTE_BENIGNA</option><option>BENIGNA</option></select></label>
+    <label>Fecha<input name="fecha" type="date" value="2026-10-01"></label>
+    <button{% if SOLO_LECTURA %} disabled title="Desactivado en modo solo lectura"{% endif %}>{{ icono('historial') }} Reclasificar</button></form>
+  <h3>{{ icono('historial') }} Últimos cambios <span class="etq">trigger T8</span></h3>
+  {% if historial %}<div class="tabla"><table><thead><tr><th>Anotación</th><th>Antes</th><th>Después</th><th>Fecha</th></tr></thead><tbody>
+  {% for h in historial %}<tr><td class="mono" style="font-size:12.5px">{{ h.id_anotacion }}</td><td>{{ h.significancia_anterior|replace('PROBABLEMENTE_', 'PROB. ') }}</td><td><b>{{ h.significancia_nueva|replace('PROBABLEMENTE_', 'PROB. ') }}</b></td><td class="fecha">{{ h.fecha_cambio }}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="mute">Sin cambios todavía.</p>{% endif %}
+</div>
+
+<div class="panel op roja" id="revocar">
+  <div class="titulo"><span class="icono">{{ icono('escudo_x') }}</span><h2>Revocar consentimiento</h2><span class="etq mono">sp_revocar_consentimiento</span></div>
+  <form class="params" method="post" onsubmit="return confirm('Esto borra todas las muestras y genotipos del donante. ¿Continuar?')">
+    <input type="hidden" name="op" value="revocar">
+    <label>Donante<input name="id_donante" placeholder="CGA-D900001" required></label>
+    <button{% if SOLO_LECTURA %} disabled title="Desactivado en modo solo lectura"{% endif %} class="peligro">{{ icono('borrar') }} Revocar y borrar sus datos</button></form>
+  <h3>{{ icono('historial') }} Bitácora <span class="etq">trigger T9 y cargas</span></h3>
+  {% if bitacora %}<div class="tabla"><table><thead><tr><th>Momento</th><th>Evento</th><th>Detalle</th></tr></thead><tbody>
+  {% for b in bitacora %}<tr><td class="mono" style="font-size:12px">{{ b.momento.strftime('%Y-%m-%d %H:%M') }}</td><td><span class="etq">{{ b.evento }}</span></td><td class="det">{{ b.detalle }}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<p class="mute">Sin eventos.</p>{% endif %}
+</div>
+</div>
+{% endblock %}

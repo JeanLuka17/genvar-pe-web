@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <div class="chip-grande">{{ icono(ico) }}</div>
+  <div><h1>{{ titulo }} <span class="etq mono">{{ nombre }}</span></h1>
+  <p class="sub">{{ descripcion }}</p></div>
+</div>
+
+<div class="panel selector-tablas">
+  {% for g, ts in grupos.items() %}
+  <div class="grupo"><span class="g">{{ g }}</span>
+    <div class="chips">{% for t, tt, ic in ts %}<a href="{{ url_for('tabla', nombre=t) }}" class="chip {% if t == nombre %}activo{% endif %}">{{ icono(ic) }}{{ tt }}</a>{% endfor %}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<form class="panel buscar-tabla" method="get">
+  {{ icono('buscar') }}
+  <input name="q" value="{{ q }}" placeholder="Buscar por {{ buscables|map('replace', '_', ' ')|join(', ') }}" aria-label="Buscar en {{ titulo }}">
+  <button>Buscar</button>
+  {% if q %}<a class="limpiar" href="{{ url_for('tabla', nombre=nombre) }}">Quitar filtro</a>{% endif %}
+</form>
+
+{% if error %}<div class="aviso error">{{ icono('error') }}<span>{{ error }}</span></div>
+{% else %}
+<div class="metricas">
+  <span class="metrica">{{ icono('filas') }}{{ '{:,}'.format(total).replace(',', ' ') }} fila{{ '' if total == 1 else 's' }}{% if q %} con «{{ q }}»{% endif %}</span>
+  <span class="metrica">{{ icono('reloj') }}{{ '%.1f'|format(ms) }} ms</span>
+  {% if total %}<span class="mute">Mostrando {{ (pagina - 1) * por_pagina + 1 }}–{{ [pagina * por_pagina, total]|min }}</span>{% endif %}
+</div>
+{% if filas %}
+<div class="tabla"><table>
+  <thead><tr>{% for c in cols %}<th class="{{ 'num' if filas[0][loop.index0] is number and filas[0][loop.index0] is not sameas true and filas[0][loop.index0] is not sameas false }}">{{ c|replace('_', ' ') }}</th>{% endfor %}</tr></thead>
+  <tbody>
+  {% for f in filas %}<tr>
+    {% for v in f %}{% set c = cols[loop.index0] %}<td class="{{ 'num' if v is number and v is not sameas true and v is not sameas false }}">
+      {%- if v is none %}<span class="mute">—</span>
+      {%- elif v is sameas true %}<span class="etq ok">{{ icono('ok') }} sí</span>
+      {%- elif v is sameas false %}<span class="etq err">no</span>
+      {%- elif c == 'id_donante' %}<a href="{{ url_for('donante', id_donante=v) }}">{{ v }}</a>
+      {%- elif c in enlaces and enlaces[c] != nombre %}<a href="{{ url_for('tabla', nombre=enlaces[c], q=v) }}">{{ v }}</a>
+      {%- elif c == 'id_muestra' and nombre == 'muestra' %}<a href="{{ url_for('tabla', nombre='genotipo', q=v) }}" title="Ver sus genotipos">{{ v }}</a>
+      {%- elif c in ('significancia', 'significancia_nueva', 'significancia_anterior') %}<span class="etq {{ 'err' if 'PATOG' in v|string else ('ok' if 'BENIG' in v|string else '') }}">{{ v }}</span>
+      {%- elif v.strftime is defined %}<span class="mono" style="font-size:12.5px">{{ v.strftime('%Y-%m-%d %H:%M') if v.hour is defined else v.strftime('%Y-%m-%d') }}</span>
+      {%- else %}{{ v }}{% endif -%}
+    </td>{% endfor %}
+  </tr>{% endfor %}
+  </tbody>
+</table></div>
+{% if paginas > 1 %}
+<nav class="paginas" aria-label="Páginas">
+  {% set base = {'nombre': nombre, 'q': q} if q else {'nombre': nombre} %}
+  <a class="pag {% if pagina == 1 %}off{% endif %}" href="{{ url_for('tabla', pag=1, **base) }}">« Primera</a>
+  <a class="pag {% if pagina == 1 %}off{% endif %}" href="{{ url_for('tabla', pag=pagina - 1, **base) }}">‹ Anterior</a>
+  <span class="actual">Página {{ pagina }} de {{ '{:,}'.format(paginas).replace(',', ' ') }}</span>
+  <a class="pag {% if pagina >= paginas %}off{% endif %}" href="{{ url_for('tabla', pag=pagina + 1, **base) }}">Siguiente ›</a>
+  <a class="pag {% if pagina >= paginas %}off{% endif %}" href="{{ url_for('tabla', pag=paginas, **base) }}">Última »</a>
+</nav>
+{% endif %}
+<p class="mute" style="margin-top:12px">{{ icono('info') }} Los códigos en azul son enlaces: llevan a la fila relacionada en otra tabla (por ejemplo, de una muestra a su donante).</p>
+{% else %}
+<div class="panel mute" style="display:flex;gap:10px;align-items:center">{{ icono('info') }} No hay filas{% if q %} que coincidan con «{{ q }}»{% endif %}.</div>
+{% endif %}
+{% endif %}
+{% endblock %}

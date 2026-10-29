@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_tabla.html" import tabla %}
+{% from "_iconos.html" import icono %}
+{% block titulo %}{{ id_donante }}{% endblock %}
+{% block contenido %}
+{% if error %}<div class="aviso error">{{ icono('error') }}<span>{{ error }}</span></div>{% endif %}
+{% if datos %}
+<div class="panel perfil">
+  <div class="avatar">{{ icono('donante') }}</div>
+  <div style="flex:1;min-width:240px">
+    <h1 style="margin:0">Donante <span class="mono">{{ id_donante }}</span></h1>
+    <div class="datos">
+      <div class="dato"><small>Sexo</small>{{ datos.sexo }}</div>
+      <div class="dato"><small>Nacimiento</small>{{ datos.anio_nacimiento }}</div>
+      <div class="dato"><small>Población</small>{{ datos.poblacion }}</div>
+      <div class="dato"><small>Muestras</small>{{ muestras|length }}</div>
+      <div class="dato"><small>Consentimiento</small>{% if datos.consentimiento %}<span class="etq ok">{{ icono('ok') }} firmado</span>{% else %}<span class="etq err">{{ icono('escudo_x') }} no firmado</span>{% endif %}</div>
+    </div>
+  </div>
+</div>
+<h2>{{ icono('muestra') }} Muestras</h2>
+{% if muestras %}
+<div class="tabla"><table><thead><tr><th>Muestra</th><th>Colecta</th><th>Tipo</th><th>Estado</th><th>Corridas</th></tr></thead><tbody>
+{% for m in muestras %}<tr><td class="mono" style="font-size:12.5px">{{ m.id_muestra }}</td><td>{{ m.fecha_colecta }}</td><td>{{ m.tipo }}</td><td><span class="etq">{{ m.estado }}</span></td><td class="mono" style="font-size:12px">{{ m.corridas or '—' }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% else %}<p class="mute">Sin muestras.</p>{% endif %}
+<h2>{{ icono('anotacion') }} Reporte clínico <span class="etq mono">fn_reporte_clinico</span></h2>
+{% if reporte %}{{ tabla(reporte) }}{% endif %}
+{% elif not error %}<div class="aviso error">{{ icono('error') }}<span>No existe el donante {{ id_donante }}.</span></div>{% endif %}
+{% endblock %}

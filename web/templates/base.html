@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Inicio{% endblock %} · GenVar-PE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232a78d6' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M7 3c0 5 10 4 10 9s-10 4-10 9'/%3E%3Cpath d='M17 3c0 5-10 4-10 9s10 4 10 9'/%3E%3C/svg%3E">
+</head>
+{% from "_iconos.html" import icono %}
+<body>
+<div class="app">
+<aside class="lateral">
+  <a class="marca" href="{{ url_for('inicio') }}">
+    <span class="logo">{{ icono('adn') }}</span>
+    <span><b>GenVar<span>-PE</span></b><small>Consorcio de Genómica Andina</small></span>
+  </a>
+  <nav>
+    <a href="{{ url_for('inicio') }}" class="{% if request.endpoint == 'inicio' %}activo{% endif %}">{{ icono('inicio') }} Inicio</a>
+    <h4>Consultas</h4>
+    {% for k, c in CONSULTAS.items() %}
+    <a href="{{ url_for('consulta', cid=k) }}" class="cq {% if request.view_args and request.view_args.get('cid') == k %}activo{% endif %}" title="{{ c.titulo }}">
+      <span class="cod">{{ k }}</span><span class="tx">{{ c.titulo }}</span></a>
+    {% endfor %}
+    <h4>Datos</h4>
+    <a href="{{ url_for('tabla', nombre='donante') }}" class="{% if request.endpoint == 'tabla' %}activo{% endif %}">{{ icono('genotipo') }} Explorar tablas</a>
+    <a href="{{ url_for('operaciones') }}" class="{% if request.endpoint == 'operaciones' %}activo{% endif %}">{{ icono('editar') }} Registrar y actualizar</a>
+    <a href="{{ url_for('indices') }}" class="{% if request.endpoint == 'indices' %}activo{% endif %}">{{ icono('indices') }} Índices y tiempos</a>
+  </nav>
+  <div class="pie-lateral">{{ icono('capas') }} PostgreSQL · Flask<br><span>CS2041 Base de Datos I · UTEC</span></div>
+</aside>
+<div class="principal">
+  <header class="barra">
+    <form class="buscador" action="{{ url_for('buscar_donante') }}" method="get">
+      {{ icono('buscar') }}
+      <input name="id" placeholder="Buscar donante, p. ej. CGA-D000123" aria-label="Buscar donante">
+      <button class="btn">Ver</button>
+    </form>
+    <form class="rol" action="{{ url_for('cambiar_rol') }}" method="post">
+      {{ icono('rol') }} <span>Actuar como</span>
+      <select name="rol" onchange="this.form.submit()" aria-label="Rol">
+        {% for r in ROLES %}<option {% if r == rol_actual %}selected{% endif %}>{{ r }}</option>{% endfor %}
+      </select>
+    </form>
+  </header>
+  <main>
+    {% if SOLO_LECTURA %}<div class="aviso info">{{ icono('info') }}<span><b>Modo solo lectura.</b> Puedes ver las tablas, ejecutar las consultas y medir tiempos; registrar o modificar datos está desactivado en la versión pública.</span></div>{% endif %}
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% for cat, m in mensajes %}<div class="aviso {{ cat }}">{{ icono('ok' if cat == 'ok' else ('error' if cat == 'error' else 'info')) }}<span>{{ m }}</span></div>{% endfor %}
+    {% endwith %}
+    {% block contenido %}{% endblock %}
+  </main>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# Configuración para Render (New → Blueprint). Render pide el valor de DATABASE_URL al crear el servicio.
+services:
+  - type: web
+    name: genvar-pe
+    runtime: python
+    plan: free
+    buildCommand: pip install -r web/requirements.txt
+    startCommand: cd web && gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: DATABASE_URL
+        sync: false
+      - key: GENVAR_SOLO_LECTURA
+        value: "1"
+      - key: GENVAR_SECRET
+        generateValue: true

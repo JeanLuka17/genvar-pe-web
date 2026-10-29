@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_tabla.html" import tabla %}
+{% from "_iconos.html" import icono %}
+{% block titulo %}{{ cid }}{% endblock %}
+{% block contenido %}
+<div class="cabecera">
+  <div class="chip-grande">{{ cid }}</div>
+  <div>
+    <h1>{{ info.titulo }} {% if en_experimento %}<span class="etq">{{ icono('indices') }} experimento de índices</span>{% endif %}</h1>
+    <p class="sub">{{ info.descripcion }}</p>
+  </div>
+</div>
+<div class="panel">
+<form class="params" method="post">
+  {% for p in nombres %}
+  <label>{{ etiquetas[p] }}<input name="{{ p }}" value="{{ valores[p] }}" required></label>
+  {% endfor %}
+  <label class="chk"><input type="checkbox" name="plan" value="1" {% if request.form.get('plan') %}checked{% endif %}> Mostrar plan de ejecución (EXPLAIN ANALYZE)</label>
+  <button>{{ icono('play') }} Ejecutar</button>
+</form>
+<details><summary>{{ icono('codigo') }} Ver SQL</summary><pre>{{ info.sql }}</pre></details>
+</div>
+{% if error %}<div class="aviso error">{{ icono('error') }}<span>{{ error }}</span></div>{% endif %}
+{% if resultado %}{{ tabla(resultado) }}{% endif %}
+{% if plan %}
+<h2>{{ icono('capas') }} Plan de ejecución</h2>
+<div class="plan-leyenda">
+  <span><i style="background:#1baf7a"></i>usa un índice</span>
+  <span><i style="background:#f7c873"></i>recorre la tabla completa (Seq Scan)</span>
+  <span><i style="background:#2a78d6"></i>tiempo total</span>
+</div>
+<pre class="plan">{% for l in plan.split('\n') %}{% set cls = 'ix' if ('Index Scan' in l or 'Index Only Scan' in l or 'Bitmap Index Scan' in l) else ('seq' if 'Seq Scan' in l else ('tiempo' if l.startswith('Execution Time') else '')) %}<span class="l {{ cls }}">{{ l }}</span>{% endfor %}</pre>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+{% block contenido %}
+{% set NOMBRES = {'donante': ('Donantes', 'donante'), 'muestra': ('Muestras', 'muestra'), 'corrida': ('Corridas de secuenciación', 'corrida'),
+   'variante': ('Variantes', 'variante'), 'genotipo': ('Genotipos', 'genotipo'), 'anotacion_clinica': ('Anotaciones clínicas', 'anotacion'), 'gen': ('Genes', 'gen')} %}
+<section class="hero">
+  {% include "_helice.svg" %}
+  <h1>GenVar-PE</h1>
+  <p>Base de datos de genómica y variantes genéticas del Consorcio de Genómica Andina. Esta aplicación se conecta directamente a PostgreSQL: cada número de esta página sale de una consulta en vivo.</p>
+  <div class="pildoras"><span>PostgreSQL</span><span>8 consultas</span><span>4 procedimientos y 1 función</span><span>9 triggers</span><span>6 roles</span></div>
+</section>
+
+{% if error %}<div class="aviso error">{{ icono('error') }}<span>{{ error }}</span></div>{% endif %}
+
+<p class="mute" style="margin:0 0 10px">Haz clic en una tarjeta para ver los datos de esa tabla.</p>
+<div class="tarjetas">
+  {% for t, n in conteos.items() %}{% set nm = NOMBRES.get(t, (t, 'genotipo')) %}
+  <a class="tarjeta {% if t == 'genotipo' %}destacada{% endif %}" href="{{ url_for('tabla', nombre=t) }}" title="Ver la tabla {{ t }}">
+    <div class="cab"><span class="icono">{{ icono(nm[1]) }}</span><span class="mute mono" style="font-size:11px;{% if t == 'genotipo' %}color:#cfe0f7{% endif %}">{{ t }}</span></div>
+    <div><div class="n">{% if n is none %}—{% else %}{{ '{:,}'.format(n).replace(',', ' ') }}{% endif %}</div>
+    <div class="t">{{ nm[0] }}{% if n is none %} · sin permiso{% endif %}</div></div>
+  </a>
+  {% endfor %}
+</div>
+
+<div class="grid2" style="margin-top:16px">
+  <div class="panel">
+    <h3 style="margin-top:0">{{ icono('anotacion') }} Anotaciones por significancia clínica</h3>
+    {% if significancia %}
+    {% set COLS = {'PATOGENICA': '#e34948', 'PROBABLEMENTE_PATOGENICA': '#f0908f', 'VUS': '#a9a8a1', 'PROBABLEMENTE_BENIGNA': '#86b6ef', 'BENIGNA': '#2a78d6'} %}
+    {% set ETQ = {'PATOGENICA': 'Patogénica', 'PROBABLEMENTE_PATOGENICA': 'Prob. patogénica', 'VUS': 'VUS (incierta)', 'PROBABLEMENTE_BENIGNA': 'Prob. benigna', 'BENIGNA': 'Benigna'} %}
+    {% set total = significancia|sum(attribute=1) %}{% set mx = significancia|map(attribute=1)|max %}
+    <div class="barras compactas">
+      {% for s, n in significancia %}
+      <div class="fila"><span class="nombre">{{ ETQ.get(s, s) }}</span>
+        <div class="pista"><div class="b" style="width:{{ (n / mx * 78)|round(1) }}%;background:{{ COLS.get(s, '#2a78d6') }}" title="{{ ETQ.get(s, s) }}: {{ n }}"></div>
+        <span class="val">{{ '{:,}'.format(n).replace(',', ' ') }} · {{ '%.0f'|format(100 * n / total) }} %</span></div></div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="mute">El rol actual no puede ver las anotaciones clínicas.</p>{% endif %}
+  </div>
+  <div class="panel">
+    <h3 style="margin-top:0">{{ icono('donante') }} Donantes por población</h3>
+    {% if poblacion %}
+    {% set mx = poblacion|map(attribute=1)|max %}
+    <div class="barras compactas">
+      {% for p, n in poblacion %}
+      <div class="fila"><span class="nombre">{{ p }}</span>
+        <div class="pista"><div class="b" style="width:{{ (n / mx * 78)|round(1) }}%;background:var(--serie1)" title="{{ p }}: {{ n }}"></div><span class="val">{{ n }}</span></div></div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="mute">El rol actual no puede ver los donantes.</p>{% endif %}
+  </div>
+</div>
+
+<h2>{{ icono('rayo') }} Qué se puede hacer</h2>
+<div class="grid2">
+  <a class="accion" href="{{ url_for('tabla', nombre='donante') }}"><span class="icono">{{ icono('genotipo') }}</span>
+    <div><b>Explorar tablas</b><span>Ver el contenido de cada tabla (donantes, muestras, variantes, genotipos…), buscar un código y pasar de una tabla a otra con los enlaces.</span></div><span class="ir">{{ icono('flecha') }}</span></a>
+  <a class="accion" href="{{ url_for('consulta', cid='C1') }}"><span class="icono">{{ icono('consulta') }}</span>
+    <div><b>Consultas C1–C8</b><span>Ejecutar cada consulta del proyecto con sus parámetros y ver el SQL, el tiempo y el plan de ejecución.</span></div><span class="ir">{{ icono('flecha') }}</span></a>
+  <a class="accion" href="{{ url_for('operaciones') }}"><span class="icono">{{ icono('editar') }}</span>
+    <div><b>Registrar y actualizar</b><span>Registrar donantes y muestras, reclasificar anotaciones y revocar consentimientos; los triggers rechazan lo que viola las reglas.</span></div><span class="ir">{{ icono('flecha') }}</span></a>
+  <a class="accion" href="{{ url_for('indices') }}"><span class="icono">{{ icono('indices') }}</span>
+    <div><b>Índices y tiempos</b><span>Borrar y crear los índices finales y comparar los tiempos de las 5 consultas del experimento.</span></div><span class="ir">{{ icono('flecha') }}</span></a>
+  <div class="accion"><span class="icono">{{ icono('rol') }}</span>
+    <div><b>Roles y permisos</b><span>Arriba a la derecha puedes actuar como genetista, investigador, auditor, etc. y comprobar qué puede ver cada uno.</span></div></div>
+</div>
+
+<h2>{{ icono('historial') }} Últimos eventos de la bitácora</h2>
+{% if bitacora %}
+<div class="tabla"><table><thead><tr><th>Momento</th><th>Usuario</th><th>Evento</th><th>Detalle</th></tr></thead><tbody>
+{% for b in bitacora %}<tr><td class="mono" style="font-size:12.5px">{{ b.momento.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ b.usuario }}</td><td><span class="etq">{{ b.evento }}</span></td><td>{{ b.detalle }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% elif bitacora is none %}<p class="mute">El rol actual no puede ver la bitácora.</p>
+{% else %}<div class="panel mute" style="display:flex;gap:10px;align-items:center">{{ icono('info') }} Todavía no hay eventos. Aparecen al cargar genotipos o al revocar un consentimiento.</div>{% endif %}
+{% endblock %}
